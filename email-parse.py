@@ -46,9 +46,11 @@ def parse_email(pathname):
                 msg_start_iter = msg_start_pattern.search(text).end()
                 try:
                     msg_end_iter = msg_end_pattern.search(text).start()
-                    message = text[msg_start_iter:msg_end_iter]
+                    message = text[msg_start_iter:msg_end_iter].
                 except AttributeError: # not a reply
                     message = text[msg_start_iter:]
+		message = re.sub(["[\n\r]", " ", message)
+		message = re.sub("  +", " ", message)
             except AttributeError:
                 logging.error("Failed to parse %s" % pathname) 
                 return None
