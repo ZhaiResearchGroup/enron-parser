@@ -38,9 +38,11 @@ def parse_email(pathname, orig=True):
         with open(pathname) as TextFile:
             text = TextFile.read()
             try:
-                time = time_pattern.search(text).group("data")
-                subject = subject_pattern.search(text).group("data")
-                sender = sender_pattern.search(text).group("data")
+                time = time_pattern.search(text).group("data").replace("\r", "").replace("\n", "")
+                subject = subject_pattern.search(text).group("data").replace("\r", "").replace("\n", "")
+
+                sender = sender_pattern.search(text).group("data").replace("\r", "").replace("\n", "")
+
                 recipient = recipient_pattern.search(text).group("data").split(", ")
                 cc = cc_pattern.search(text).group("data").split(", ")
                 bcc = bcc_pattern.search(text).group("data").split(", ")
@@ -57,9 +59,9 @@ def parse_email(pathname, orig=True):
                 return None
             # get user and thread ids
             sender_id = get_or_allocate_uid(sender)
-            recipient_id = [get_or_allocate_uid(u) for u in recipient if u!=""]
-            cc_ids = [get_or_allocate_uid(u) for u in cc if u!=""]
-            bcc_ids = [get_or_allocate_uid(u) for u in bcc if u!=""]
+            recipient_id = [get_or_allocate_uid(u.replace("\r", "").replace("\n", "")) for u in recipient if u!=""]
+            cc_ids = [get_or_allocate_uid(u.replace("\r", "").replace("\n", "")) for u in cc if u!=""]
+            bcc_ids = [get_or_allocate_uid(u.replace("\r", "").replace("\n", "")) for u in bcc if u!=""]
             thread_id = get_or_allocate_tid(subject)
         entry =  {"time": time, "thread": thread_id, "sender": sender_id, "recipient": recipient_id, "cc": cc_ids, "bcc": bcc_ids, "message": message}
         feeds.append(entry)
