@@ -25,6 +25,7 @@ msg_end_pattern = re.compile("\n+.*\n\d+/\d+/\d+ \d+:\d+ [AP]M", re.MULTILINE)
 feeds = []
 users = {}
 threads = {}
+thread_users = {}
 def parse_email(pathname, orig=True):
     if path.isdir(pathname):
         print(pathname)
@@ -36,12 +37,12 @@ def parse_email(pathname, orig=True):
     else:
         print("file %s" % pathname)
         with open(pathname) as TextFile:
-            text = TextFile.read()
+            text = TextFile.read().replace("\r", "")
             try:
-                time = time_pattern.search(text).group("data").replace("\r", "").replace("\n", "")
-                subject = subject_pattern.search(text).group("data").replace("\r", "").replace("\n", "")
+                time = time_pattern.search(text).group("data").replace("\n", "")
+                subject = subject_pattern.search(text).group("data").replace("\n", "")
 
-                sender = sender_pattern.search(text).group("data").replace("\r", "").replace("\n", "")
+                sender = sender_pattern.search(text).group("data").replace("\n", "")
 
                 recipient = recipient_pattern.search(text).group("data").split(", ")
                 cc = cc_pattern.search(text).group("data").split(", ")
@@ -59,10 +60,20 @@ def parse_email(pathname, orig=True):
                 return None
             # get user and thread ids
             sender_id = get_or_allocate_uid(sender)
-            recipient_id = [get_or_allocate_uid(u.replace("\r", "").replace("\n", "")) for u in recipient if u!=""]
-            cc_ids = [get_or_allocate_uid(u.replace("\r", "").replace("\n", "")) for u in cc if u!=""]
-            bcc_ids = [get_or_allocate_uid(u.replace("\r", "").replace("\n", "")) for u in bcc if u!=""]
+            recipient_id = [get_or_allocate_uid(u.replace("\n", "")) for u in recipient if u!=""]
+            cc_ids = [get_or_allocate_uid(u.replace("\n", "")) for u in cc if u!=""]
+            bcc_ids = [get_or_allocate_uid(u.replace("\n", "")) for u in bcc if u!=""]
             thread_id = get_or_allocate_tid(subject)
+        if thread_id not in thread_users:
+            thread_users[thread_id] = set()
+        # maintain list of users involved in thread
+        users_involved = []
+        users_involved.append(sender_id)
+        users_involved.extend(recipient_id)
+        users_involved.extend(cc_ids)
+        users_involved.extend(bcc_ids)
+        thread_users[thread_id] |= set(users_involved)
+ 
         entry =  {"time": time, "thread": thread_id, "sender": sender_id, "recipient": recipient_id, "cc": cc_ids, "bcc": bcc_ids, "message": message}
         feeds.append(entry)
     if orig:
@@ -73,6 +84,10 @@ def parse_email(pathname, orig=True):
                 json.dump(users, f)
             with open('threads.json', 'w') as f:
                 json.dump(threads, f)
+            with open('thread-users.json', 'w') as f:
+                for thread in thread_users:
+                    thread_users[thread] = list(thread_users[thread])
+                json.dump(thread_users, f)
         except IOError:
             print("Unable to write to output files, aborting")
             exit(1)
@@ -93,7 +108,7 @@ def get_or_allocate_uid(name):
 # Returns: unique integer id
 #
 def get_or_allocate_tid(name):
-    parsed_name = re.sub("Re: ", "", name)
+    parsed_name = re.sub("(RE|Re|FWD|Fwd): ", "", name)
     if parsed_name not in threads:
         threads[parsed_name] = len(threads)
     return threads[parsed_name]
