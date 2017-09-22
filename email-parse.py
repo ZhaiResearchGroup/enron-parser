@@ -26,6 +26,7 @@ feeds = []
 users = {}
 threads = {}
 thread_users = {}
+user_threads = {}
 def parse_email(pathname, orig=True):
     if path.isdir(pathname):
         print(pathname)
@@ -73,6 +74,11 @@ def parse_email(pathname, orig=True):
         users_involved.extend(cc_ids)
         users_involved.extend(bcc_ids)
         thread_users[thread_id] |= set(users_involved)
+        # maintain list of threads where user is involved
+        for user in set(users_involved):
+            if user not in user_threads:
+                user_threads[user] = set()
+            user_threads[user].add(thread_id)
  
         entry =  {"time": time, "thread": thread_id, "sender": sender_id, "recipient": recipient_id, "cc": cc_ids, "bcc": bcc_ids, "message": message}
         feeds.append(entry)
@@ -88,6 +94,10 @@ def parse_email(pathname, orig=True):
                 for thread in thread_users:
                     thread_users[thread] = list(thread_users[thread])
                 json.dump(thread_users, f)
+            with open('user-threads.json', 'w') as f:
+                for user in user_threads:
+                    user_threads[user] = list(user_threads[user])
+                json.dump(user_threads, f)
         except IOError:
             print("Unable to write to output files, aborting")
             exit(1)
